@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Digital Alarm Clock Simulator</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f6f8;--card:#fff;--text:#1a2330;--muted:#6b7785;--on:#e8260c;--line:#d5dbe2;--btn:#1f6feb;--btnt:#fff;--grn:#16a34a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1319;--card:#161d26;--text:#e8edf2;--muted:#8b97a5;--on:#ff4a2e;--line:#2a3441;--btn:#3b82f6}}
+:root[data-theme="dark"]{--bg:#0e1319;--card:#161d26;--text:#e8edf2;--muted:#8b97a5;--on:#ff4a2e;--line:#2a3441;--btn:#3b82f6}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:600px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.4rem;margin:0 0 4px}
+.sub{margin:0 0 16px;color:var(--muted);font-size:.92rem}
+h2{font-size:1rem;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.disp{display:flex;align-items:center;justify-content:center;gap:4px;background:#0b0f14;border-radius:10px;padding:16px 8px}
+.disp svg.d{width:13%;max-width:56px;height:auto}
+.disp svg.c{width:4%;max-width:16px;height:auto}
+.seg{fill:#2a1512;transition:fill .05s}
+.seg.on{fill:var(--on);filter:drop-shadow(0 0 3px var(--on))}
+.dot{fill:#2a1512}.dot.on{fill:var(--on)}
+.leds{display:flex;gap:16px;justify-content:center;margin-top:12px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.led{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--line);vertical-align:middle;margin-right:5px}
+.led.on{background:var(--on);box-shadow:0 0 8px var(--on)}
+.led.g.on{background:var(--grn);box-shadow:0 0 8px var(--grn)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+label{font-size:.85rem;color:var(--muted)}
+button,select,input{font:inherit}
+button{background:var(--btn);color:var(--btnt);border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer}
+button.alt{background:var(--bg);color:var(--text);border:1px solid var(--line)}
+button.stop{background:var(--on)}
+button:active{transform:translateY(1px)}
+select,input[type=number]{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}
+input[type=number]{width:64px}
+.ring{display:none;background:var(--on);color:#fff;text-align:center;font-weight:700;border-radius:10px;padding:10px;margin-top:12px;animation:bl .5s steps(2) infinite}
+.ring.show{display:block}
+@keyframes bl{50%{opacity:.45}}
+.cnt{display:flex;gap:8px;align-items:stretch}
+.cnt>div{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center;font-size:.78rem;color:var(--muted)}
+.cnt b{display:block;font-size:1.3rem;color:var(--text);font-variant-numeric:tabular-nums}
+.cnt .carry{display:flex;align-items:center;justify-content:center;flex:0 0 46px;font-size:.7rem}
+.cnt .carry.on{background:var(--grn);color:#fff;border-color:var(--grn)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⏰ Digital Alarm Clock</h1>
+  <p class="sub">24-hour clock with alarm, built from counters (mod-60, mod-60, mod-24) driving 7-segment displays.</p>
+
+  <div class="card">
+    <div class="disp" id="disp"></div>
+    <div class="leds">
+      <span><i class="led g" id="ledAlarm"></i>ALARM ARMED</span>
+      <span><i class="led" id="ledBuzz"></i>BUZZER</span>
+      <span class="mono" id="almTxt">Alarm: 06:30:00</span>
+    </div>
+    <div class="ring" id="ring">🔔 ALARM! Press STOP or SNOOZE</div>
+  </div>
+
+  <div class="card">
+    <h2>Set buttons (like the hardware circuit)</h2>
+    <div class="row">
+      <button class="alt" id="hPlus">+1 Hour</button>
+      <button class="alt" id="mPlus">+1 Minute</button>
+      <button class="alt" id="sReset">Reset seconds</button>
+    </div>
+    <div class="row">
+      <label>Set time</label><input type="number" id="sh" min="0" max="23" value="12"><span>:</span><input type="number" id="sm" min="0" max="59" value="0">
+      <button id="setT">Set</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Alarm</h2>
+    <div class="row">
+      <label>Alarm at</label><input type="number" id="ah" min="0" max="23" value="6"><span>:</span><input type="number" id="am" min="0" max="59" value="30">
+      <button id="setA">Set alarm</button>
+      <button class="alt" id="armBtn">Arm: ON</button>
+    </div>
+    <div class="row">
+      <button class="alt" id="testA">Ring in 5 seconds (test)</button>
+      <button class="stop" id="stopBtn">STOP</button>
+      <button class="alt" id="snz">SNOOZE 5 min</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Simulation speed</h2>
+    <div class="row">
+      <select id="spd">
+        <option value="1">1x (real time)</option>
+        <option value="10">10x</option>
+        <option value="60">60x (1 min per second)</option>
+        <option value="600">600x</option>
+        <option value="3600">3600x (1 hour per second)</option>
+      </select>
+      <button class="alt" id="pause">Pause</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Counter chain</h2>
+    <div class="cnt">
+      <div>Hours<br>mod 24<b id="cH">0</b></div>
+      <div class="carry" id="cy2">carry</div>
+      <div>Minutes<br>mod 60<b id="cM">0</b></div>
+      <div class="carry" id="cy1">carry</div>
+      <div>Seconds<br>mod 60<b id="cS">0</b></div>
+    </div>
+    <p class="mono" style="margin:10px 0 0">1 Hz clock → seconds counter → carry at 59→00 → minutes counter → carry at 59→00 → hours counter (resets at 23→00). The alarm fires when a comparator sees clock HH:MM = alarm HH:MM.</p>
+  </div>
+</div>
+
+<script>
+const MAP={0:'abcdef',1:'bc',2:'abged',3:'abgcd',4:'fgbc',5:'afgcd',6:'afgedc',7:'abc',8:'abcdefg',9:'abcfgd'};
+const POS={a:[16,6,68,12],b:[82,16,12,62],c:[82,82,12,62],d:[16,142,68,12],e:[6,82,12,62],f:[6,16,12,62],g:[16,74,68,12]};
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const DAY=86400;
+let t=12*3600, alarm=6*3600+30*60, armed=true, ringing=false, nextRing=alarm, speed=1, paused=false, audio=null, lastDisp='';
+const digits=[],colons=[];
+
+// build display: H H : M M : S S
+const disp=$('disp');
+function mkDigit(){
+  const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 100 160');s.setAttribute('class','d');
+  const segs={};
+  for(const k in POS){const [x,y,w,h]=POS[k];const r=document.createElementNS(NS,'rect');
+    r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);r.setAttribute('rx',5);r.setAttribute('class','seg');s.appendChild(r);segs[k]=r;}
+  disp.appendChild(s);digits.push(segs);
+}
+function mkColon(){
+  const s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 30 160');s.setAttribute('class','c');
+  [50,110].forEach(cy=>{const c=document.createElementNS(NS,'circle');c.setAttribute('cx',15);c.setAttribute('cy',cy);c.setAttribute('r',9);c.setAttribute('class','dot on');s.appendChild(c);colons.push(c);});
+  disp.appendChild(s);
+}
+for(let i=0;i<6;i++){mkDigit();if(i==1||i==3)mkColon();}
+
+const p2=n=>String(n).padStart(2,'0');
+function parts(sec){const s=Math.floor(sec)%DAY;return [Math.floor(s/3600),Math.floor(s%3600/60),s%60];}
+function render(){
+  const [h,m,s]=parts(t);
+  const str=p2(h)+p2(m)+p2(s);
+  for(let i=0;i<6;i++){const d=+str[i];for(const k in POS)digits[i][k].classList.toggle('on',MAP[d].includes(k));}
+  colons.forEach(c=>c.classList.toggle('on',s%2===0||ringing));
+  $('cH').textContent=h;$('cM').textContent=m;$('cS').textContent=s;
+  const [ah,am,as]=parts(alarm);
+  $('almTxt').textContent='Alarm: '+p2(ah)+':'+p2(am)+':'+p2(as);
+  $('ledAlarm').classList.toggle('on',armed);
+  $('armBtn').textContent='Arm: '+(armed?'ON':'OFF');
+}
+function flashCarry(id){const e=$(id);e.classList.add('on');setTimeout(()=>e.classList.remove('on'),180);}
+
+function beep(){
+  if(!audio)return;
+  try{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.18);}catch(e){}
+}
+let beepTimer=null;
+function startRing(){
+  if(ringing)return;ringing=true;$('ring').classList.add('show');
+  beepTimer=setInterval(()=>{$('ledBuzz').classList.toggle('on');if($('ledBuzz').classList.contains('on'))beep();},250);
+}
+function stopRing(){
+  ringing=false;$('ring').classList.remove('show');clearInterval(beepTimer);$('ledBuzz').classList.remove('on');
+}
+function crossed(prev,cur,target){
+  if(cur>=prev)return target>prev&&target<=cur;
+  return target>prev||target<=cur;
+}
+function wake(){if(!audio){try{audio=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}}
+
+let last=performance.now();
+setInterval(()=>{
+  const now=performance.now(),dt=(now-last)/1000;last=now;
+  if(paused)return;
+  const prev=t%DAY;
+  t=(t+dt*speed)%DAY;
+  const ps=Math.floor(prev),cs=Math.floor(t);
+  if(ps!==cs){
+    if(cs%60===0&&speed<=60)flashCarry('cy1');
+    if(cs%3600===0&&speed<=60)flashCarry('cy2');
+    if(armed&&!ringing&&crossed(prev,t,nextRing))startRing();
+    render();
+  }
+},50);
+
+// controls
+$('hPlus').onclick=()=>{t=(t+3600)%DAY;render();};
+$('mPlus').onclick=()=>{t=(t+60)%DAY;render();};
+$('sReset').onclick=()=>{t=Math.floor(t/60)*60;render();};
+$('setT').onclick=()=>{const h=Math.min(23,Math.max(0,+$('sh').value||0)),m=Math.min(59,Math.max(0,+$('sm').value||0));t=h*3600+m*60;render();};
+$('setA').onclick=()=>{wake();const h=Math.min(23,Math.max(0,+$('ah').value||0)),m=Math.min(59,Math.max(0,+$('am').value||0));alarm=h*3600+m*60;nextRing=alarm;armed=true;render();};
+$('armBtn').onclick=()=>{wake();armed=!armed;if(!armed)stopRing();render();};
+$('testA').onclick=()=>{wake();alarm=(Math.floor(t)+5)%DAY;nextRing=alarm;armed=true;render();};
+$('stopBtn').onclick=()=>{wake();stopRing();nextRing=alarm;render();};
+$('snz').onclick=()=>{wake();if(!ringing)return;stopRing();nextRing=(Math.floor(t)+300)%DAY;render();};
+$('spd').onchange=e=>{speed=+e.target.value;};
+$('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Resume':'Pause';last=performance.now();};
+render();
+</script>
+</body>
+</html>
